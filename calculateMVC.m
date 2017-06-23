@@ -1,4 +1,5 @@
 function [MVC] = calculateMVC(channel)
+param = getParam();
 emg = zeros(param.sampleRate*(param.mvc_duration*param.mvc_trials));
 f = figure();
 % scrsz = get(groot,'ScreenSize');
