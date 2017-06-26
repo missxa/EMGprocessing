@@ -1,16 +1,20 @@
 function [filt_emg] = filterEMG(emg,MVC)
-param = getParam;
+param = loadParams();
 
-% 1) Rebase
-reb_emg = emg - mean(emg);
+% band-pass filter
+bfilt_emg =  bandfilter(emg,param.bandfilter(1),param.bandfilter(2),param.freq);
 
-% 2) band-pass filter
-bfilt_emg =  bandfilter(reb_emg,param.bandfilter(1),param.bandfilter(2),param.freq);
 
-%) 3) signal rectification
-rect_emg = abs(bfilt_emg);
+% notch (50 Hz) 
+nfilt_emg = notch(bfilt_emg, param.sampleRate, 50);
 
-% 4) low pass filter at 5Hz
+% high-pass
+hfilt_emg = hpfilter(nfilt_emg, param.highfilter, param.sampleRate);
+
+% signal rectification
+rect_emg = abs(hfilt_emg);
+
+% low pass filter at 5Hz
 lfilt_emg = lpfilter(rect_emg, param.lowfilter, param.freq);
 
 if isnan(MVC)
@@ -25,4 +29,12 @@ else
     filt_emg = lfilt_emg ./ (MVC*0.8/100);
     
 end
+
+t = 1:length(emg);
+%plot(t, bfilt_emg, t, nfilt_emg, t, hfilt_emg, t, rect_emg, t, lfilt_emg, t, filt_emg)
+%legend('bandpass', 'notch', 'highpass', 'rectified', 'lowpass', 'normalized');
+
+plot( t, filt_emg)
+legend('normalized');
+
 end

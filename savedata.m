@@ -13,7 +13,7 @@ if not(exist('param', 'var'))
 end
 
 %% allocate space 
-dim = 256 * (param.trials * (param.t_hold_force + param.t_relax));
+dim = param.sampleRate * (param.trials * (param.t_hold_force + param.t_relax));
 emg_array = zeros(1,dim);
 joint_angles = nan(1,dim);
 forces = nan(1,dim);
@@ -25,10 +25,12 @@ joint_sub = rossubscriber(jtopic);
 muscle_sub = rossubscriber(mtopic);
 
 %% obtain MVC
-% MVC = calculateMVC(param.channels(muscle));
-% disp('Calibration completed. Starting the experiment in 10 secs.');
-% pause(10);
-MVC = 330.0;
+MVC = calculateMVC(param.channels(muscle));
+disp('Calibration completed. Starting the experiment in 10 secs.');
+pause(5);
+disp('Starting the experiment');
+pause(5);
+% MVC = 330.0;
 
 %%
 for j=1:length(emg_array)

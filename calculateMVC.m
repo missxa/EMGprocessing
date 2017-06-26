@@ -10,7 +10,7 @@ for j = 1:param.mvc_trials
     disp('Flex the muscle as strong as possible');
     tic
     while toc < param.mvc_duration% + param.mvc_pause
-        [emg_msg,~] = judp('RECEIVE',16573,400);
+        [emg_msg,~] = judp('RECEIVE',16571,400);
         emg_array = jsondecode(char(emg_msg));
         emg(i) = emg_array(channel);
         i = i + 1;
