@@ -28,15 +28,14 @@ if not(exist('param', 'var'))
     param = getParam();
 end
 
-disp('moving the robot in 3 seconds');
-pause(3);
+input('Press ENTER to move the robot', 's');
 
 %% alternate force on the muscle
 i = 1;
 while i <= param.trials
   
-    call(move_motor, request);
     disp('Wrestle');
+    call(move_motor, request);
     pause(param.t_hold_force);    
     request.Setpoint = 38;
     call(move_motor, request);
