@@ -8,7 +8,7 @@ param.trials = 10;
 param.trialDuration = 2000;
 param.sampleRate = 600;
 param.freq = 600;
-param.mvc_duration = 10; % in seconds
+param.mvc_duration = 20; % in seconds
 param.mvc_trials = 4;
 param.mvc_pause = 3; % seconds for rest between mvc trials
 

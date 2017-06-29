@@ -1,11 +1,11 @@
-function [MVC] = calculateMVC(channels)
+function [MVC, emg] = calculateMVC(channels)
 param = loadParams();
 emg = zeros(1,param.sampleRate*param.mvc_duration);
 f = figure();
 % scrsz = get(groot,'ScreenSize');
 % f.Position = [2000 scrsz(4) scrsz(3) scrsz(4)];
 
-disp(strcat('Flex the muscle as strong as possible and relax for a few times in next', num2str(param.mvc_duration), ' seconds'));
+disp(strcat('Flex the muscle as strong as possible and relax for a few times in the next ', num2str(param.mvc_duration), ' seconds'));
 i = 1;
 for j = 1:param.mvc_duration * param.sampleRate
      %tic
