@@ -1,27 +1,35 @@
-function [MVC, emg] = calculateMVC(channels)
+function [MVC, emg] = calculateMVC(muscle)
 param = loadParams();
-emg = zeros(1,param.sampleRate*param.mvc_duration);
+channels = param.channels(muscle);
+emg = zeros(1,param.sampleRate*param.mvc_duration*param.mvc_repetitions);
 f = figure();
 % scrsz = get(groot,'ScreenSize');
 % f.Position = [2000 scrsz(4) scrsz(3) scrsz(4)];
 
-disp(strcat('Flex the muscle as strong as possible and relax for a few times in the next ', num2str(param.mvc_duration), ' seconds'));
 i = 1;
-for j = 1:param.mvc_duration * param.sampleRate
-     %tic
-    %while toc < param.mvc_duration% + param.mvc_pause
-    [emg_msg,~] = judp('RECEIVE',16571,400);
-    emg_array = jsondecode(char(emg_msg));
-    emg(j) = emg_array(channels(2)) - emg_array(channels(1));
-    i = i + 1;
-    %end
-    %disp('Relax');
-    %pause(param.mvc_pause);
+for k=1:param.mvc_repetitions
+    disp(strcat('Contraction for ', muscle));
+
+    for j = 1:param.mvc_duration * param.sampleRate
+         %tic
+        %while toc < param.mvc_duration% + param.mvc_pause
+        [emg_msg,~] = judp('RECEIVE',16571,400);
+        emg_array = jsondecode(char(emg_msg));
+        emg(i) = emg_array(channels(2)) - emg_array(channels(1));
+        i = i + 1;
+        %end
+        %disp('Relax');
+        %pause(param.mvc_pause);
+    end
+    
+    disp('Relax');
+    k = k +1;
+    pause(param.mvc_pause);
 end
 
 disp('preprocessing data..');
 % band-pass
-bfilt_emg =  bandfilter(emg',param.bandfilter(1),param.bandfilter(2),param.freq);
+bfilt_emg = bandfilter(emg',param.bandfilter(1),param.bandfilter(2),param.freq);
 
 % notch (50 Hz) 
 nfilt_emg = notch(bfilt_emg, param.sampleRate, 50);

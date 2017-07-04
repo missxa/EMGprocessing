@@ -4,13 +4,14 @@ param.lowfilter = 500;
 param.highfilter = 10;
 param.RMSwindow = 250;
 %param.nbframe = 4000; % number frame needed (interpolation)
-param.trials = 10;
+param.trials = 3;
 param.trialDuration = 2000;
 param.sampleRate = 600;
 param.freq = 600;
-param.mvc_duration = 20; % in seconds
+param.mvc_duration = 1; % in seconds
 param.mvc_trials = 4;
 param.mvc_pause = 3; % seconds for rest between mvc trials
+param.mvc_repetitions = 2;
 
 param.t_hold_force = 8;
 param.t_relax = 3;

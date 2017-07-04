@@ -1,4 +1,4 @@
-function [emg_array, forces, joint_angles] = savedata(muscle)
+function [emg_array, forces, joint_angles] = savedata()
 
 session = input('session name: ', 's');
 %% ros setup
@@ -13,45 +13,64 @@ if not(exist('param', 'var'))
 end
 
 %% allocate space 
-dim = param.sampleRate * (param.trials * (param.t_hold_force + param.t_relax) + 30);
-emg_array = zeros(1,dim);
+dim = param.sampleRate * (param.trials * (param.t_hold_force + param.t_relax));
+emg_array.biceps = zeros(1,dim);
+emg_array.triceps = zeros(1,dim);
 joint_angles = nan(1,dim);
-forces = nan(1,dim);
+forces.biceps = nan(1,dim);
+forces.triceps = nan(1,dim);
 
 %%
 jtopic = '/myo_blink/joints/lower/angle';
-mtopic = strcat('/myo_blink/muscles/', muscle, '/sensors');
 joint_sub = rossubscriber(jtopic);
-muscle_sub = rossubscriber(mtopic);
-ch = param.channels(muscle);
+
+btopic = strcat('/myo_blink/muscles/', 'biceps', '/sensors');
+ttopic = strcat('/myo_blink/muscles/', 'triceps', '/sensors');
+
+b_sub = rossubscriber(btopic);
+t_sub = rossubscriber(btopic);
+
+bch = param.channels('biceps');
+tch = param.channels('triceps');
 
 %% obtain MVC
-[calibration.MVC, calibration.EMG] = calculateMVC(ch);
+[calibration.biceps.MVC, calibration.biceps.EMG] = calculateMVC('biceps');
+[calibration.triceps.MVC, calibration.triceps.EMG] = calculateMVC('triceps');
+
 calib = struct('calibration', calibration);
-save(strcat(session, '_calibration_', muscle, '.mat'), 'calib');
+save(strcat(session, '_calibration_', '.mat'), 'calib');
 input('Calibration completed. Pres ENTER to continue the experiment', 's');
 
-
 %%
-for j=1:length(emg_array)
+for j=1:dim
     [emg_msg,~] = judp('RECEIVE',16571,400);
     emg = jsondecode(char(emg_msg));
-    emg_array(j) = emg(ch(2)) - emg(ch(1));
+    emg_array.biceps(j) = emg(bch(2)) - emg(bch(1));
+    emg_array.triceps(j) = emg(tch(2)) - emg(tch(1));
     %plot(1:j, emg_array(1:j), '-');
     joint_msg = joint_sub.LatestMessage;
     joint_angles(j) = joint_msg.Data;
-    forces(j) = muscle_sub.LatestMessage.ElasticDisplacement * 0.2 + 38;
+    forces.biceps(j) = t_sub.LatestMessage.ElasticDisplacement * 0.2 + 38;
+    forces.triceps(j) = b_sub.LatestMessage.ElasticDisplacement * 0.2 + 38;
+    
 end
 
 %% apply basic filters 
 disp('preprocessing data..');
-% band-pass
-bfilt_emg =  bandfilter(emg_array',param.bandfilter(1),param.bandfilter(2),param.freq);
-% notch (50 Hz) 
-nfilt_emg = notch(bfilt_emg, param.sampleRate, 50);
-
+clear emg
+fields = fieldnames(emg_array)
+for i = 1:numel(fields)
+    emg = emg_array.(fields{i});
+    % band-pass
+    bfilt_emg =  bandfilter(emg',param.bandfilter(1),param.bandfilter(2),param.freq);
+    % notch (50 Hz) 
+    data.(fields{i}).EMG = notch(bfilt_emg, param.sampleRate, 50);
+end
 %%
-data = struct('EMG', nfilt_emg, 'angle', joint_angles, 'force', forces);
-save(strcat(session, '_', muscle, '.mat'), 'data');
-plot(1:length(nfilt_emg), nfilt_emg, 1:length(forces), forces);
+% data.biceps.EMG = biceps_emg_array;
+data.biceps.force = forces.biceps;
+% data.triceps.EMG =  triceps_emg_array;
+data.triceps.force = forces.triceps;
+
+save(strcat(session, '.mat'), 'data');
 end
