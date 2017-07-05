@@ -1,6 +1,4 @@
 function acquisitionEMG()
-
-muscles = [string('biceps'), string('triceps')];
 %% ros setup
 if not(robotics.ros.internal.Global.isNodeActive)
     rosinit('localhost');
@@ -18,9 +16,10 @@ move_motor = rossvcclient('/myo_blink/move');
 request = rosmessage(move_motor);
 
 request.Action = 'keep';
-min = 40;
-max = 65;
-forces = (max-min).*rand(2*param.trials+1,1) + min;
+min = 42;
+%max = 65;
+delta = randperm(param.trials*2);
+%forces = min:max;%unifrnd(min, max, 1, 2*param.trials);
 request.Setpoint = min;
 
 %% load params 
@@ -34,14 +33,23 @@ input('Press ENTER to move the robot', 's');
 %% alternate force on the muscle
 i = 1;
 while i <= param.trials*2
+    
+     try
+        [emg_msg,~] = judp('RECEIVE',16571,400);
+    catch
+        warning('EMG data is not received. Robot actuation is on pause');
+        input('Press ENTER to continue: ', 's');
+        continue;
+     end
+    
     if mod(i,2)==0
-        muscle = 'biceps'
+        muscle = 'biceps';
     else
-        muscle = 'triceps'
+        muscle = 'triceps';
     end
     request.Muscle = muscle;
-    disp(forces(i));
-    request.Setpoint = forces(i);
+    disp(min + delta(i));
+    request.Setpoint = min + delta(i);%forces(i);
     disp('Wrestle');
     call(move_motor, request);
     pause(param.t_hold_force);    

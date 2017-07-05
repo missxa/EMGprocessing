@@ -13,8 +13,14 @@ for k=1:param.mvc_repetitions
     for j = 1:param.mvc_duration * param.sampleRate
          %tic
         %while toc < param.mvc_duration% + param.mvc_pause
-        [emg_msg,~] = judp('RECEIVE',16571,400);
-        emg_array = jsondecode(char(emg_msg));
+         try
+            [emg_msg,~] = judp('RECEIVE',16571,400);
+            emg_array = jsondecode(char(emg_msg));
+        catch
+            warning('Corrupted data, skipping the message');
+            input('Press ENTER to continue: ', 's');
+            continue;
+         end
         emg(i) = emg_array(channels(2)) - emg_array(channels(1));
         i = i + 1;
         %end
@@ -24,7 +30,9 @@ for k=1:param.mvc_repetitions
     
     disp('Relax');
     k = k +1;
-    pause(param.mvc_pause);
+    pause(param.mvc_pause-5);
+    disp('5 seconds till next trial');
+    pause(5);
 end
 
 disp('preprocessing data..');

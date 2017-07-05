@@ -1,6 +1,11 @@
-function [emg_array, forces, joint_angles] = savedata()
+function [emg_array] = savedata()
 
 session = input('session name: ', 's');
+data.subject.name = input('name: ', 's');
+data.subject.age = input('age: ', 's');
+data.subject.height = input('height: ', 's');
+data.subject.weight = input('weight: ', 's');
+
 %% ros setup
 if not(robotics.ros.internal.Global.isNodeActive)
     rosinit('localhost');
@@ -13,25 +18,24 @@ if not(exist('param', 'var'))
 end
 
 %% allocate space 
-dim = param.sampleRate * (param.trials * (param.t_hold_force + param.t_relax));
-emg_array.biceps = zeros(1,dim);
-emg_array.triceps = zeros(1,dim);
-joint_angles = nan(1,dim);
-forces.biceps = nan(1,dim);
-forces.triceps = nan(1,dim);
+muscles = [string('biceps'), string('triceps')];
+dim = param.sampleRate * (2 * param.trials * (param.t_hold_force + param.t_relax));
+data.robot.joint_angles = nan(1,dim);
+
+for i=1:length(muscles)
+    emg_array.(muscles{i}) = nan(1,dim);
+    emg_array.(muscles{i}) = nan(1,dim);
+    data.robot.(muscles{i}).force = nan(1,dim);
+    data.robot.(muscles{i}).l_CE = nan(1,dim);
+    data.robot.(muscles{i}).delta_l_SEE = nan(1,dim);
+    data.robot.(muscles{i}).dot_l_CE = nan(1,dim);
+    data.robot.(muscles{i}).dot_l_SEE = nan(1,dim);
+    subscriber.(muscles{i}) = rossubscriber( strcat('/myo_blink/muscles/', muscles{i}, '/sensors'));
+end
 
 %%
 jtopic = '/myo_blink/joints/lower/angle';
 joint_sub = rossubscriber(jtopic);
-
-btopic = strcat('/myo_blink/muscles/', 'biceps', '/sensors');
-ttopic = strcat('/myo_blink/muscles/', 'triceps', '/sensors');
-
-b_sub = rossubscriber(btopic);
-t_sub = rossubscriber(btopic);
-
-bch = param.channels('biceps');
-tch = param.channels('triceps');
 
 %% obtain MVC
 [calibration.biceps.MVC, calibration.biceps.EMG] = calculateMVC('biceps');
@@ -43,34 +47,41 @@ input('Calibration completed. Pres ENTER to continue the experiment', 's');
 
 %%
 for j=1:dim
-    [emg_msg,~] = judp('RECEIVE',16571,400);
-    emg = jsondecode(char(emg_msg));
-    emg_array.biceps(j) = emg(bch(2)) - emg(bch(1));
-    emg_array.triceps(j) = emg(tch(2)) - emg(tch(1));
-    %plot(1:j, emg_array(1:j), '-');
-    joint_msg = joint_sub.LatestMessage;
-    joint_angles(j) = joint_msg.Data;
-    forces.biceps(j) = t_sub.LatestMessage.ElasticDisplacement * 0.2 + 38;
-    forces.triceps(j) = b_sub.LatestMessage.ElasticDisplacement * 0.2 + 38;
+    try
+        [emg_msg,~] = judp('RECEIVE',16571,400);
+        emg = jsondecode(char(emg_msg));
+    catch
+        warning('Corrupted data, skipping the message');
+        input('Communication problem. Press ENTER to continue: ', 's');
+        continue;
+    end
     
+    for i=1:length(muscles)
+        ch = param.channels('biceps');
+        emg_array.(muscles{i})(j) = emg(ch(2)) -  emg(ch(1));
+        msg = subscriber.(muscles{i}).LatestMessage;
+        data.robot.(muscles{i}).force(j) = msg.ElasticDisplacement * 0.2 + 38;
+        % raw values of the robot state, no conversion
+        data.robot.(muscles{i}).l_CE(j) = msg.ContractileDisplacement;% * 0.006 * pi / 6.28319;
+        data.robot.(muscles{i}).delta_l_SEE(j) = msg.ElasticDisplacement;
+        data.robot.(muscles{i}).dot_l_CE(j) = msg.ActuatorVel;
+        data.robot.(muscles{i}).dot_l_SEE(j) = msg.ElasticVel;
+    end
+    
+    data.robot.joint_angles(j) = joint_sub.LatestMessage.Data;    
 end
 
 %% apply basic filters 
 disp('preprocessing data..');
 clear emg
-fields = fieldnames(emg_array)
+fields = fieldnames(emg_array);
 for i = 1:numel(fields)
     emg = emg_array.(fields{i});
     % band-pass
     bfilt_emg =  bandfilter(emg',param.bandfilter(1),param.bandfilter(2),param.freq);
     % notch (50 Hz) 
-    data.(fields{i}).EMG = notch(bfilt_emg, param.sampleRate, 50);
+    data.subject.(fields{i}).EMG = notch(bfilt_emg, param.sampleRate, 50);
 end
 %%
-% data.biceps.EMG = biceps_emg_array;
-data.biceps.force = forces.biceps;
-% data.triceps.EMG =  triceps_emg_array;
-data.triceps.force = forces.triceps;
-
 save(strcat(session, '.mat'), 'data');
 end
