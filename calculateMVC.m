@@ -18,7 +18,7 @@ for k=1:param.mvc_repetitions
             emg_array = jsondecode(char(emg_msg));
         catch
             warning('Corrupted data, skipping the message');
-            input('Press ENTER to continue: ', 's');
+%             input('Press ENTER to continue: ', 's');
             continue;
          end
         emg(i) = emg_array(channels(2)) - emg_array(channels(1));
