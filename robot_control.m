@@ -16,7 +16,7 @@ function acquisitionEMG()
     request = rosmessage(move_motor);
 
     request.Action = 'keep';
-    min = 50;
+    min = 70;
     %max = 65;
     delta = randperm(param.trials*2);
     %forces = min:max;%unifrnd(min, max, 1, 2*param.trials);
@@ -52,7 +52,7 @@ function acquisitionEMG()
     %         continue;
     %      end
 
-        if mod(i,2)==0
+        if (i<=param.trials)
             muscle = 'biceps';
         else
             muscle = 'triceps';
