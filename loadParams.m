@@ -12,10 +12,10 @@ param.mvc_duration = 10; % in seconds
 param.mvc_pause = 40; % seconds for rest between mvc trials
 param.mvc_repetitions = 3;
 
-param.t_hold_force = 8;
+param.t_hold_force = 4;
 param.t_relax = 3;
 % param.method = 'low' ; % RMS ou low
 param.channels = containers.Map;
 param.channels('biceps') = [1,2];
-param.channels('triceps') = [5,6];
+param.channels('triceps') = [3,4];
 end
