@@ -1,14 +1,17 @@
 param=loadParams();
-load('00.mat');
+load('00_calibration.mat')
+load('00.mat')
+% load('10_chris_g.mat');
+% load('10_chris_g_calibration_.mat');
 % load('06_bernhard_calibration_.mat')
 % MVC = calib.calibration.biceps.MVC;
-emg = data.subject.biceps.EMG(40000:end);
+emg = data.subject.biceps.EMG(40000:end)/calib.calibration.biceps.MVC;
 forces = data.robot.triceps.force(40000:end);
 
 
 % 
-% emg = interp(emg,2)'; % fixes sampling rate issue for now!
-% forces = interp(forces,2)';
+emg = interp(emg,2)'; % fixes sampling rate issue for now!
+forces = interp(forces,2)';
 
 dim = 1:length(emg);
 % newemg = nan(1,length(emg));
@@ -63,7 +66,8 @@ for i=window:window:dim
     s = sample;
     sMinMax = minmax(sample);
     ret = (((r - rMinMax(1)) / (rMinMax(2) - rMinMax(1))) * (sMinMax(2) - sMinMax(1))) + sMinMax(1); 
-
+    plot(ret);hold on;
+    
     force = forces(range)';
     inputs((j-1)*27 +1 :j*27) = ret;
     outputs((j-1)*27 +1 :j*27) = mean(force);
@@ -81,43 +85,17 @@ for i=window:window:dim
     j=j+1;
 end
 
-plot(inputs);hold on;
+plot(100*inputs);hold on;
 plot(outputs);
 
-% for i=0:floor(dim/(window-overlap))-1
-%     range = i*(window - overlap) +1 : i*(window - overlap) + window;
-%     sample = emg(range); 
-% %     rms_sample = RMS(range);
-%     force = forces(range)';
-% 
-%     [C,L] = wavedec(sample,4,mother);
-%     Cnew = C;
-%     tmp = cumsum(L);
-%     Cnew(1:tmp(1)) = 0;
-%     Cnew(tmp(end-3)+1:tmp(end-1)) = 0;   
-%     Rec_signal=waverec(Cnew,L,mother); 
-%     reconstructed_emg = [reconstructed_emg, Rec_signal];
-%     [d1,d2,d3,d4] = detcoef(C,L,[1 2 3 4]);
-%     a2 = appcoef(C,L,mother,2);
-%     
-% %     emg_rms(j) = mean(rms_sample);
-%     emg_mav(j) = meanabs(d3);
-%     force_mav(j) = mean(force);
-%     j=j+1;
-% end
+% modelfun = @(b, x) b(1)-b(1)./(1+4/b(2).*(cosh(b(3)/b(4).*x)).^2);
+% modelfun=@(b,x)(1./(1+exp(-b(1).*x-b(2))));
+% modelfun = @(b,x)x(:,1)/8 + b(1) - b(1)*((1 - (3/(b(1)*4))).^(x(:,1)/2));
+% modelfun = @(b,x)b(1) + b(2)*x(:,1).^b(3) + b(4)*x(:,2).^b(5);
 
-% plot(forces,'k');hold on;
-% plot(reconstructed_emg,'r','linewidth',2);hold on;
-% plot(reconstructed_emg, forces);
-
-emg_mav(isnan(emg_mav)) = [];
-force_mav(isnan(emg_mav)) = [];
-emg_rms(isnan(emg_rms)) = [];
-
-% X = emg_mav;
-% y = force_mav;
-% plot(X, y, 'r.')
-
-dim = 1:j-1;
-plot(dim, emg_mav, dim, force_mav);
-
+net = feedforwardnet([10,10]);
+net.layers{1}.transferFcn = 'logsig'
+net.layers{2}.transferFcn = 'logsig'
+net = train(net, inputs, outputs);
+y = net(inputs);
+perf = perform(net, y, outputs)
