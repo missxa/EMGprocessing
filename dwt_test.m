@@ -1,35 +1,83 @@
 param=loadParams();
-load('00_calibration.mat')
-load('00.mat')
-% load('10_chris_g.mat');
-% load('10_chris_g_calibration_.mat');
-% load('06_bernhard_calibration_.mat')
-% MVC = calib.calibration.biceps.MVC;
-emg = data.subject.biceps.EMG(40000:end)/calib.calibration.biceps.MVC;
-forces = data.robot.triceps.force(40000:end);
+samples.wrestling = {};
+samples.calibration = {};
+% load('00_calibration.mat')
+% load('00.mat')
+% load('18_leonard.mat')
+% load('17_leonard_calibration.mat')
+% load('15_matthias_calibration.mat')
+% load('16_matthias.mat')
+
+samples.calibration = [samples.calibration, load('19_emec_calibration.mat')];
+samples.wrestling = [samples.wrestling, load('19_emec.mat')];
+
+samples.wrestling = [samples.wrestling, load('18_leonard.mat')];
+samples.calibration = [samples.calibration, load('17_leonard_calibration.mat')];
 
 
+samples.wrestling = [samples.wrestling, load('17_leonard.mat')];
+samples.calibration = [samples.calibration, load('17_leonard_calibration.mat')];
+
+ 
+% samples.wrestling = [samples.wrestling,load('16_matthias.mat')];
+% samples.calibration = [samples.calibration, load('15_matthias_calibration.mat')];
 % 
-emg = interp(emg,2)'; % fixes sampling rate issue for now!
-forces = interp(forces,2)';
+%  
+% samples.wrestling = [samples.wrestling, load('15_matthias.mat')];
+% samples.calibration = [samples.calibration, load('15_matthias_calibration.mat')];
 
-dim = 1:length(emg);
-% newemg = nan(1,length(emg));
+ 
+samples.wrestling = [samples.wrestling, load('20_juri.mat')];
+samples.calibration = [samples.calibration, load('20_juri_calibration.mat')];
 
-% RMS = nan(size(emg));
-% for j = param.RMSwindow:length(emg)-param.RMSwindow-1
-%     RMS(j,:) = rms(emg(j-param.RMSwindow+1:j+param.RMSwindow));
-% end
+ 
+samples.wrestling = [samples.wrestling, load('21_juri.mat')];
+samples.calibration = [samples.calibration, load('20_juri_calibration.mat')];
 
+%  
+% samples.wrestling = [samples.wrestling, load('22_julian.mat')];
+% samples.calibration = [samples.calibration, load('22_julian_calibration.mat')];
+% 
+% samples.wrestling = [samples.wrestling, load('23_julian.mat')];
+% samples.calibration = [samples.calibration, load('22_julian_calibration.mat')];
 
-% window = 200;
-% x = data.subject.biceps.EMG(21113-window/2:21113+window/2);
-% y = data.subject.biceps.EMG(51950-window/2:51950+window/2);
+emg = nan(1,65000*8);
+forces = nan(1,65000*8);
 
-% subplot(2,1,1)
-% plot(x); title('Original Signal');
-% subplot(2,1,2)
-% plot(a3); title('Level-4 Approximation Coefficients');
+k=1;
+
+for i=1:length(samples.calibration)
+    clf;
+    cur = samples.wrestling(i);
+    cur_c = samples.calibration(i);
+   
+    nfilt_emg = cur{1}.data.subject.biceps.EMG(60000:end);
+    RMS = nan(size(nfilt_emg));
+    for j = param.RMSwindow:length(nfilt_emg)-param.RMSwindow-1
+        RMS(j,:) = rms(nfilt_emg(j-param.RMSwindow+1:j+param.RMSwindow));
+    end
+    
+%     RMS = RMS/max(max(RMS));
+    
+%     plot(RMS); hold on; 
+%     mvc(1:length(RMS))=cur_c{1}.calib.calibration.triceps.MVC;
+%     plot(mvc);
+    
+%     n = isnan(RMS);
+    
+    len = length(cur{1}.data.subject.biceps.EMG(60000:end));
+    emg(k:len+k-1) = RMS/cur_c{1}.calib.calibration.biceps.MVC;
+    forces(k:len+k-1) = cur{1}.data.robot.triceps.force(60000:end);
+    k = k + len + 1;
+end
+
+clf;
+del = isnan(emg);
+emg(del) = [];
+forces(del) = [];
+
+plot(100*emg);hold on;
+plot(forces);
 
 dim=length(emg);
 window = 200;
@@ -38,10 +86,9 @@ overlap = 0;
 emg_mav = nan(1,floor(dim/(window-overlap))-1);
 force_mav = nan(1,floor(dim/(window-overlap))-1);
 emg_rms = nan(1,floor(dim/(window-overlap))-1);
-inputs = nan(1,floor(dim/window)*27);
-outputs = nan(1,floor(dim/window)*27);
+inputs = nan(floor(dim/window),27);
+outputs = nan(floor(dim/window),1);
 
-reconstructed_emg = [];
 
 j=1;
  
@@ -55,6 +102,7 @@ mother = 'db2';
 % xlabel(['Coefs for approx. at level 3 ' ... 
 %         'and for det. at levels 3, 2 and 1'])
     
+clf;
 for i=window:window:dim
     range = i-window+1:i;
     sample = emg(range); 
@@ -66,11 +114,14 @@ for i=window:window:dim
     s = sample;
     sMinMax = minmax(sample);
     ret = (((r - rMinMax(1)) / (rMinMax(2) - rMinMax(1))) * (sMinMax(2) - sMinMax(1))) + sMinMax(1); 
-    plot(ret);hold on;
+%     plot(ret);hold on;
     
     force = forces(range)';
-    inputs((j-1)*27 +1 :j*27) = ret;
-    outputs((j-1)*27 +1 :j*27) = mean(force);
+    
+    inputs(j,:) = ret;
+    outputs(j,:) = mean(force);
+%     inputs((j-1)*27 +1 :j*27) = ret;
+%     outputs((j-1)*27 +1 :j*27) = mean(force);
     
 %     subplot(211); plot(sample); 
 %     title('Original signal'); 
@@ -85,17 +136,18 @@ for i=window:window:dim
     j=j+1;
 end
 
-plot(100*inputs);hold on;
-plot(outputs);
+% clf;
+% plot(100*inputs);hold on;
+% plot(outputs);
 
 % modelfun = @(b, x) b(1)-b(1)./(1+4/b(2).*(cosh(b(3)/b(4).*x)).^2);
 % modelfun=@(b,x)(1./(1+exp(-b(1).*x-b(2))));
 % modelfun = @(b,x)x(:,1)/8 + b(1) - b(1)*((1 - (3/(b(1)*4))).^(x(:,1)/2));
 % modelfun = @(b,x)b(1) + b(2)*x(:,1).^b(3) + b(4)*x(:,2).^b(5);
 
-net = feedforwardnet([10,10]);
-net.layers{1}.transferFcn = 'logsig'
-net.layers{2}.transferFcn = 'logsig'
-net = train(net, inputs, outputs);
-y = net(inputs);
-perf = perform(net, y, outputs)
+net = feedforwardnet([5,3], 'trainbfg');
+% net.layers{1}.transferFcn = 'purelin';
+% net.layers{2}.transferFcn = 'logsig';
+[net, p] = train(net, inputs', outputs');
+y = net(inputs');
+perf = perform(net, y, outputs')
