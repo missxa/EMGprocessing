@@ -1,19 +1,66 @@
-global arr
-arr = ...
- [0.9 1.5 13.8 19.8 24.1 28.2 35.2 60.3 74.6 81.3];
-ydata = ...
- [455.2 428.6 124.1 67.3 43.2 28.1 13.1 -0.4 -1.3 -1.5];
+[emg,forces] = loadData();
 
+in = emg(1,:);
+output = forces(1,:)/100;
 
-% fun = @(x)x(1)*exp(x(2)*xdata(end-1))-ydata;
-x0 = [100,-1];
-% x0(2) = [100,-1];
-% x0(3) = [100,-1];
-% x0(4) = [100,-1]
+t = 60:length(in);
+x0 = [0,0,0,8,-2];
+setX(x0);
 
-% func = @(x)e(x,t);
-syms t e
+fun = @(x) a(x,t,in) - output;
+ub = [100,100,100,60,0];
+lb = [-100,-100,-10,6,-3];
+options = optimoptions('lsqnonlin','Display','iter');
 
-fun = @(x)symsum(e(x,t,arr) - x*e(x,t-1,arr) - x*e(x,t-2,arr) - ydata(t), t, 5, 7);
+tic
+[x,resnorm,residual,exitflag,output] = lsqnonlin(fun,x0,lb,ub,options);
+toc
 
-x = lsqnonlin(fun, x0, [], [])
+function ret = a(x,t,in)
+    
+   if(abs(sum(x-getPrevX)) > 1.0e-03)
+       setX(x);
+       wipeE();
+   end
+    ret = (exp(x(5)*e(x,t,in)) - 1)/(exp(x(5))-1);
+end
+
+function ret = e(x,t,in)
+
+    if t(1)<=x(4)
+        ret = 0;
+    else
+        try
+            ret = x(1)*in(int64(t(1)-x(4))) - x(2)*getE(t(1)-1) - x(3)*getE(t(1) -2);
+        catch
+            ret = x(1)*in(int64(t(1)-x(4))) - x(2)*e(x,t-1, in) - x(3)*e(x,t-2,in);
+        end
+    end
+    updateE(ret, t(1));
+
+end
+
+function updateE(val,pos)
+    global e_calc
+    e_calc(pos) = val;
+end
+
+function ret  = getE(pos)
+    global e_calc
+    ret = e_calc(pos);
+end
+
+function wipeE()
+    global e_calc;
+    e_calc = [];
+end
+
+function setX(val)
+    global X;
+    X = val;
+end
+
+function ret = getPrevX()
+    global X;
+    ret = X;
+end
