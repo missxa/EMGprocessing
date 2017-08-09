@@ -1,10 +1,11 @@
+wipeE()
 [emg,forces] = loadData();
 
 in = emg(1,:);
 output = forces(1,:)/100;
 
 t = 60:length(in);
-x0 = [0,0,0,8,-2];
+x0 = [1,1,1,8,-2];
 setX(x0);
 
 fun = @(x) a(x,t,in) - output;
