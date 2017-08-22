@@ -1,15 +1,16 @@
-function [emg, forces] = loadData()
+function [emg, activation] = loadData()
     param=loadParams();
+    cd data
 
     % for q=1:11
         samples.wrestling = {};
         samples.calibration = {};
 
-        des = [12,13,14,15,16,17,18];
-        include = zeros(18,1);
+        des = 12:21;%[16,17,18];
+        include = zeros(21,1);
 
         emg_muscle = 'biceps';
-        force_muscle = 'triceps';
+        force_muscle = 'biceps';
 
         if (strcmp(force_muscle,'triceps'))
             ranges = 70001:140000;
@@ -112,7 +113,24 @@ function [emg, forces] = loadData()
             samples.calibration = [samples.calibration, load('andrew1_calibration.mat')];
             samples.wrestling = [samples.wrestling,  load('andrew7.mat')];
         end
-
+        
+        if(include(19)==1)
+            samples.calibration = [samples.calibration, load('andrew1_calibration.mat')];
+            samples.wrestling = [samples.wrestling,  load('andrew8.mat')];
+        end
+        
+        if(include(20)==1)
+            samples.calibration = [samples.calibration, load('andrew1_calibration.mat')];
+            samples.wrestling = [samples.wrestling,  load('andrew9.mat')];
+        end
+        
+        if(include(21)==1)
+            samples.calibration = [samples.calibration, load('andrew1_calibration.mat')];
+            samples.wrestling = [samples.wrestling,  load('andrew10.mat')];
+        end
+        
+        cd ..
+        
         emg = nan(2,65000*8);
         forces = nan(2,65000*8);
 
@@ -151,6 +169,7 @@ function [emg, forces] = loadData()
 
                 len = length(cur{1}.data.subject.(emg_muscle).EMG(ranges));
                 tmp = RMS/cur_c{1}.calib.calibration.(emg_muscle).MVC;
+%                 tmp = (tmp-min(tmp))/(max(tmp) - min(tmp));
                 emg(z,k:len+k-1) = tmp;
 
             %     plot(tmp);hold on;
@@ -167,6 +186,14 @@ function [emg, forces] = loadData()
     forces(:,del) = [];
     
     forces(forces<38) = 38;
+    
+    activation = (forces(1,:)-38)/(100-38);
+
+%     for i=1:length(activation)-1500
+%         if activation(i)-activation(i+200)<-0.1
+%             activation(i+100:i+400) = activation(i+1500);
+%         end
+%     end
 end
 
 %     clf;

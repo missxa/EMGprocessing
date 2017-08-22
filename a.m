@@ -1,25 +1,3 @@
-wipeE()
-[emg,forcxes] = loadData();
-
-in = emg(1,:);
-output = (forces(1,:)-38)/(100-38);
-
-t = 200:length(in);
-x0 = [1,1,1,2,-3];%[90,70,20,10,0];
-setX(x0);
-
-fun = @(x) a(x,t,in) - output;
-ub = [100,100,100,240,0];
-lb = [0.9,0,0,6,-3];
-
-options = optimoptions('lsqnonlin','Display','iter');
-% options = optimset('Display','iter','TolFun',1e-16,'MaxIter',1e15, ...
-% 'MaxFunEvals',1e15,'TolX',1e-16);
-
-tic
-[x,resnorm,residual,exitflag,out] = lsqnonlin(fun,x0,lb,ub,options);
-toc
-
 function ret = a(x,t,in)
     
    if(abs(sum(x-getPrevX)) > 1.0e-04)
