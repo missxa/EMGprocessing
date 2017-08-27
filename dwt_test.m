@@ -1,10 +1,12 @@
 param=loadParams();
 
-[emg,activation] = loadData([17:20]);
+[emg,activation] = loadData([12:20]);
+
 
 for i=1:2
     emg(i,:) = (emg(i,:) - mean(emg(i,:)))/std(emg(i,:));
 end;
+
 % emg = emg(2,:);
 
 % plot(emg);hold on;
@@ -16,13 +18,14 @@ window = 150;
 overlap = 0;
 
 inputs = nan(floor(dim/window),2);
+inputs2 = nan(floor(dim/window),2);
 outputs = nan(floor(dim/window),1);
 
 
 j=1;
  
 level = 3;
-mother = 'db4';
+mother = 'db2';
 
 % subplot(211); plot(sample); 
 % title('Original signal'); 
@@ -52,6 +55,7 @@ for i=window:window:dim
     a = activation(range)';
     
     inputs(j,2) = var(abs(d32));%mean(d3);
+    inputs2(j,1) = mean(abs(d31));
     inputs(j,1) = mean(abs(d32));
 %     inputs(j,2) = std(d3);
     outputs(j) = mean(a);
@@ -59,40 +63,46 @@ for i=window:window:dim
     j=j+1;
 end
 
-% outputs = downsample(activation,window);
-% outputs(end) = [];
 for i=1:2
-    inputs(i,:) = lpfilter(inputs(i,:), 10, Fs/window);
+    inputs(:,i) = lpfilter(inputs(:,i), 10, Fs/window);
+     inputs2(:,i) = lpfilter(inputs(:,i), 10, Fs/window);
 end
-% corrcoef(inputs,outputs)
 
-% clf;
-% plot(100*inputs);hold on;
-% plot(outputs);
+%% LSQ optimization
 
-% modelfun = @(b, x) b(1)-b(1)./(1+4/b(2).*(cosh(b(3)/b(4).*x)).^2);
-% modelfun=@(b,x)(1./(1+exp(-b(1).*x-b(2))));
-% modelfun = @(b,x)x(:,1)/8 + b(1) - b(1)*((1 - (3/(b(1)*4))).^(x(:,1)/2));
-% modelfun = @(b,x)b(1) + b(2)*x(:,1).^b(3) + b(4)*x(:,2).^b(5);
+inputs = inputs(:,1);
+inputs2 = inputs2(:,1);
+fun = @(x) x(1)* inputs.^2 + x(2) * inputs + x(3) + x(4)* inputs2.^2 + x(5) * inputs2 - outputs;
 
-in = inputs';
-out = outputs';
-net = feedforwardnet([10]);
-% net.layers{end}.transferFcn = 'tansig';
-net.trainParam.epochs = 30000;
-ing = nndata2gpu(in);
-outg = nndata2gpu(out);
-net = configure(net,in,out);
-[net, p] = train(net, ing, outg,'useParallel', 'yes', 'useGPU','yes','showResources','yes');
+options = optimoptions('lsqnonlin','Display','iter');
+options.Algorithm = 'levenberg-marquardt';
+x0 = [1,1,1,1,1];
+[x,resnorm,residual,exitflag,out] = lsqnonlin(fun,x0,[],[],options);
 
 
-% testing
+%% NN training
+% in = inputs';
+% out = outputs';
+% net = feedforwardnet([6,6,6]);
+% % net.layers{1}.transferFcn = 'poslin';
+% % net.layers{2}.transferFcn = 'poslin';
+% % net.layers{3}.transferFcn = 'poslin';
+% net.trainParam.epochs = 30000;
+% ing = nndata2gpu(in);
+% outg = nndata2gpu(out);
+% net = configure(net,in,out);
+% [net, p] = train(net, ing, outg,'useParallel', 'yes', 'useGPU','yes','showResources','yes');
+
+
+%% testing data prep
+
 [emg,activation] = loadData([21]);
 dim=length(emg);
 Fs = 599;
 window = 150;
 
 inputs = nan(floor(dim/window),2);
+inputs2 = nan(floor(dim/window),2);
 outputs = nan(floor(dim/window),1);
 
 for i=1:2
@@ -115,6 +125,7 @@ for i=window:window:dim
     a = activation(range)';
     
     inputs(j,2) = var(abs(d32));%mean(d3);
+    inputs2(j,1) = mean(abs(d31));
     inputs(j,1) = mean(abs(d32));
 %     inputs(j,2) = std(d3);
     outputs(j) = mean(a);
@@ -123,13 +134,26 @@ for i=window:window:dim
 end
 
 for i=1:2
-    inputs(i,:) = lpfilter(inputs(i,:), 10, Fs/window);
+   inputs(:,i) = lpfilter(inputs(:,i), 10, Fs/window);
+   inputs2(:,i) = lpfilter(inputs(:,i), 10, Fs/window);
 end
 
-test_outputs = sim(net, inputs');
-clf;
-plot(test_outputs)
-hold on;plot(outputs)
+%% LSQ test
+
+inputs = inputs(:,1);
+inputs2 = inputs2(:,1);
+test_outputs = x(1)* inputs.^2 + x(2) * inputs + x(3) + x(4)* inputs2.^2 + x(5) * inputs2;
+clf
+plot(test_outputs);
+hold on;
+plot(outputs);
+
+%% NN test
+
+% test_outputs = sim(net, inputs');
+% clf;
+% plot(test_outputs)
+% hold on;plot(outputs)
 
 
 

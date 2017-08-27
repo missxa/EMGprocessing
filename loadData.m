@@ -22,10 +22,10 @@ function [emg, activation] = loadData(des)
             include(des(i)) = 1;
         end
 
-        if(include(1)==1)
-            samples.calibration = [samples.calibration, load('19_emec_calibration.mat')];
-            samples.wrestling = [samples.wrestling, load('19_emec.mat')];
-        end
+%         if(include(1)==1)
+%             samples.calibration = [samples.calibration, load('19_emec_calibration.mat')];
+%             samples.wrestling = [samples.wrestling, load('19_emec.mat')];
+%         end
 
         if(include(2)==1)
             samples.wrestling = [samples.wrestling, load('18_leonard.mat')];
@@ -58,15 +58,15 @@ function [emg, activation] = loadData(des)
             samples.calibration = [samples.calibration, load('20_juri_calibration.mat')];
         end
 
-        if(include(8)==1)
-            samples.wrestling = [samples.wrestling, load('22_julian.mat')];
-            samples.calibration = [samples.calibration, load('22_julian_calibration.mat')];
-        end
-
-        if(include(9)==1)
-            samples.wrestling = [samples.wrestling, load('23_julian.mat')];
-            samples.calibration = [samples.calibration, load('22_julian_calibration.mat')];
-        end
+%         if(include(8)==1)
+%             samples.wrestling = [samples.wrestling, load('22_julian.mat')];
+%             samples.calibration = [samples.calibration, load('22_julian_calibration.mat')];
+%         end
+% 
+%         if(include(9)==1)
+%             samples.wrestling = [samples.wrestling, load('23_julian.mat')];
+%             samples.calibration = [samples.calibration, load('22_julian_calibration.mat')];
+%         end
         % 
         if(include(10)==1)
             samples.wrestling = [samples.wrestling, load('25_konstantin.mat')];
@@ -133,9 +133,13 @@ function [emg, activation] = loadData(des)
         
         emg = nan(2,65000*8);
         forces = nan(2,65000*8);
-
-        offset = 0;%350;
-
+        
+        d = designfilt('bandpassiir','FilterOrder',4, ...
+        'HalfPowerFrequency1',5,'HalfPowerFrequency2',300, ...
+        'SampleRate',600);
+    
+        wo = 50/(600/2);  bw = wo/35;
+        [bn,an] = iirnotch(wo,bw);
 
 
         for z=1:2
@@ -154,6 +158,11 @@ function [emg, activation] = loadData(des)
                 cur_c = samples.calibration(i);
 
                 nfilt_emg = cur{1}.data.subject.(emg_muscle).EMG(ranges);
+                nfilt_emg = filter(d,nfilt_emg);
+                
+                nfilt_emg = filter(bn,an, nfilt_emg);
+                
+                
 %                 RMS = nan(size(nfilt_emg));
 %                 for j = param.RMSwindow:length(nfilt_emg)-param.RMSwindow-1
 %                     RMS(j,:) = rms(nfilt_emg(j-param.RMSwindow+1:j+param.RMSwindow));
@@ -168,9 +177,10 @@ function [emg, activation] = loadData(des)
             %     n = isnan(RMS);
 
                 len = length(cur{1}.data.subject.(emg_muscle).EMG(ranges));
-%                 tmp = nfilt_emg/cur_c{1}.calib.calibration.(emg_muscle).MVC;
+                
+                tmp = nfilt_emg/cur_c{1}.calib.calibration.(emg_muscle).MVC;
 %                 tmp = (tmp-min(tmp))/(max(tmp) - min(tmp));
-                emg(z,k:len+k-1) = nfilt_emg;
+                emg(z,k:len+k-1) = tmp;
 
                 forces(z,k:len+k-1) = cur{1}.data.robot.(force_muscle).force(ranges);
         %         plot(forces(k:len+k-1));
