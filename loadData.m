@@ -1,4 +1,4 @@
-function [emg, activation] = loadData()
+function [emg, activation] = loadData(des)
     param=loadParams();
     cd data
 
@@ -6,7 +6,7 @@ function [emg, activation] = loadData()
         samples.wrestling = {};
         samples.calibration = {};
 
-        des = 12:21;%[16,17,18];
+%         des = [17:20];%[16,17,18];
         include = zeros(21,1);
 
         emg_muscle = 'biceps';
@@ -94,10 +94,10 @@ function [emg, activation] = loadData()
             samples.wrestling = [samples.wrestling,  load('andrew3.mat')];
         end
 
-        if(include(15)==1)
-            samples.calibration = [samples.calibration, load('andrew1_calibration.mat')];
-            samples.wrestling = [samples.wrestling,  load('andrew4.mat')];
-        end
+%         if(include(15)==1)
+%             samples.calibration = [samples.calibration, load('andrew1_calibration.mat')];
+%             samples.wrestling = [samples.wrestling,  load('andrew4.mat')];
+%         end
 
         if(include(16)==1)
             samples.calibration = [samples.calibration, load('andrew1_calibration.mat')];
@@ -154,10 +154,10 @@ function [emg, activation] = loadData()
                 cur_c = samples.calibration(i);
 
                 nfilt_emg = cur{1}.data.subject.(emg_muscle).EMG(ranges);
-                RMS = nan(size(nfilt_emg));
-                for j = param.RMSwindow:length(nfilt_emg)-param.RMSwindow-1
-                    RMS(j,:) = rms(nfilt_emg(j-param.RMSwindow+1:j+param.RMSwindow));
-                end
+%                 RMS = nan(size(nfilt_emg));
+%                 for j = param.RMSwindow:length(nfilt_emg)-param.RMSwindow-1
+%                     RMS(j,:) = rms(nfilt_emg(j-param.RMSwindow+1:j+param.RMSwindow));
+%                 end
 
             %     RMS = RMS/max(max(RMS));
 
@@ -168,11 +168,9 @@ function [emg, activation] = loadData()
             %     n = isnan(RMS);
 
                 len = length(cur{1}.data.subject.(emg_muscle).EMG(ranges));
-                tmp = RMS/cur_c{1}.calib.calibration.(emg_muscle).MVC;
+%                 tmp = nfilt_emg/cur_c{1}.calib.calibration.(emg_muscle).MVC;
 %                 tmp = (tmp-min(tmp))/(max(tmp) - min(tmp));
-                emg(z,k:len+k-1) = tmp;
-
-            %     plot(tmp);hold on;
+                emg(z,k:len+k-1) = nfilt_emg;
 
                 forces(z,k:len+k-1) = cur{1}.data.robot.(force_muscle).force(ranges);
         %         plot(forces(k:len+k-1));
@@ -188,12 +186,15 @@ function [emg, activation] = loadData()
     forces(forces<38) = 38;
     
     activation = (forces(1,:)-38)/(100-38);
-
+%     activation = forces;
 %     for i=1:length(activation)-1500
 %         if activation(i)-activation(i+200)<-0.1
 %             activation(i+100:i+400) = activation(i+1500);
 %         end
 %     end
+    clf;
+    plot(emg(2,:));
+    hold on;plot(2*activation);
 end
 
 %     clf;
