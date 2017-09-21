@@ -7,7 +7,7 @@ for i=1:2
     emg(i,:) = (emg(i,:) - mean(emg(i,:)))/std(emg(i,:));
 end;
 
-[trainInd,valInd,testInd] = divideblock(length(emg),0.1,0.9,0);
+% [trainInd,valInd,testInd] = divideblock(length(emg),0.1,0.9,0);
 
 testemg = emg(2,valInd);
 
